@@ -1,0 +1,91 @@
+/* Query 1 - In Which Year, Which Country Spent The Most Money and How Much in Total? */
+
+WITH CTE AS
+	(
+	SELECT 
+	   c.Country, 
+	   strftime('%Y', i.InvoiceDate) AS Year, 
+	   ROUND(SUM(i.total),2) AS total_sales
+	FROM Invoice AS i
+	JOIN InvoiceLine il
+	ON i.InvoiceId = il.InvoiceId
+	JOIN Customer AS c
+	ON c.CustomerId = i.CustomerId
+	GROUP BY 1,2
+	)
+
+SELECT 
+   Country, 
+   Year,
+   MAX(total_sales)AS Max_Sales
+FROM CTE
+GROUP BY 2
+ORDER BY 2
+
+/* Query 2 - Top 10 Most Selling Artists in Q1 2010 Worldwide */
+
+SELECT 
+   a.name AS Artist,
+   COUNT(il.TrackId) AS Total_Sales
+FROM 
+   Artist AS a
+   JOIN Album AS al
+   ON a.ArtistId = al. ArtistId
+   JOIN Track AS t
+   ON t.AlbumId = al.AlbumId
+   JOIN InvoiceLine AS il
+   ON il.TrackId = t.TrackId
+   JOIN Invoice AS i
+   ON i.InvoiceId = il.InvoiceId
+   JOIN Customer AS c
+   ON c.CustomerId = i.CustomerId
+   JOIN Genre AS g
+   ON g.GenreId = t.GenreId
+WHERE strftime('%Y-%m', i.invoicedate) IN ('2010-01','2010-02','2010-03')
+GROUP BY 1
+ORDER BY 2 DESC
+LIMIT 10
+
+/* Query 3 Which Genres Have an Average Track Unit Price More Than Overall Average? */
+
+SELECT 
+   g.name AS Genre,
+   AVG(t.UnitPrice) AS "Average Unit Price", 
+   (SELECT ROUND(AVG(unitprice),2) 
+   FROM Track ) AS "Overall Average"
+FROM Track t
+JOIN Genre g
+ON t.GenreId = g.GenreId
+WHERE T.UnitPrice > 
+		(
+		SELECT AVG(unitprice)
+		FROM Track
+		)
+GROUP BY 1
+
+/* Query 4 - Which customers are the most loyal and use our services every year? How much did they spend every year ? */
+
+WITH CTE AS
+	(
+	SELECT 
+   	   c.CustomerId, 
+   	   c.FirstName ||' '|| c.LastName AS "Full_Name", 
+   	   strftime('%Y', i.invoicedate) AS "Year", 
+   	   SUM(i.total) AS Total
+	FROM customer c
+	JOIN Invoice i
+	USING (CustomerId)
+	GROUP BY 1,2,3
+	)
+
+SELECT 
+   CustomerId, 
+   Full_Name, 
+   SUM(Total) AS Total_Spent
+FROM CTE
+GROUP BY 1
+HAVING COUNT(*) = 5
+ORDER BY 3 DESC
+
+
+
